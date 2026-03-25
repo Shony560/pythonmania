@@ -20,7 +20,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          debug: true
           script: |
+            set -x
             cd /home/ubuntu/pythonmania
             git pull origin main
             pkill -f 'app.py' || true
