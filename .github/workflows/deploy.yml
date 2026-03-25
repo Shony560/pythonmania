@@ -25,5 +25,5 @@ jobs:
             set -x
             cd /home/ubuntu/pythonmania
             git pull origin main
-            pkill -f '[a]pp.py' || true
+            fuser -k 4567/tcp || true
             nohup ./venv/bin/python app.py > app.log 2>&1 &
