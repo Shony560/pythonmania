@@ -159,6 +159,21 @@ def mark_attendance():
     conn.commit()
     conn.close()
     
+    # Send Kafka Event
+    if producer:
+        try:
+            event = {
+                "username": session['username'],
+                "action": "check_in" if status == "Check In" else "check_out",
+                "status": status,
+                "date": date_str,
+                "time": time_str
+            }
+            producer.send('user-events', event)
+            producer.flush()
+        except Exception as e:
+            print(f"Kafka error: {e}")
+            
     flash(f"Successfully marked '{status}' at {time_str}")
     return redirect(url_for('dashboard'))
 
