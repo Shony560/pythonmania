@@ -22,7 +22,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/pythonmania
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             ./venv/bin/pip install -r requirements.txt
             fuser -k 4567/tcp || true
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
