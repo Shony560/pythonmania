@@ -243,5 +243,10 @@ def api_post_attendance():
     return jsonify({"message": "Attendance recorded", "status": status, "time": time_str}), 201
 
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, host='0.0.0.0', port=4567)
+    try:
+        init_db()
+        logger.info("Application starting on port 4567...")
+        app.run(debug=False, host='0.0.0.0', port=4567)
+    except Exception as e:
+        logger.critical(f"FATAL: Application failed to start: {e}", exc_info=True)
+        raise e
