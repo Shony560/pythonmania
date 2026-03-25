@@ -25,20 +25,20 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            width: 700px;
-            height: 700px;
+            width: 800px;
+            height: 800px;
             background: url('/static/images/antigravity_orb.png') no-repeat center center;
             background-size: contain;
-            opacity: 0.12;
+            opacity: 0.6;
             z-index: -1;
-            filter: blur(5px);
-            animation: orb-flow 15s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(0, 140, 69, 0.4));
+            animation: orb-flow 12s ease-in-out infinite;
             pointer-events: none;
         }
 
         @keyframes orb-flow {
-            0%, 100% { transform: translate(-50%, -55%) scale(1) rotate(0deg); opacity: 0.08; }
-            50% { transform: translate(-50%, -45%) scale(1.1) rotate(5deg); opacity: 0.15; }
+            0%, 100% { transform: translate(-50%, -55%) scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: translate(-50%, -45%) scale(1.15) rotate(8deg); opacity: 0.8; }
         }
 
         /* Italian Style & Version Corner */
