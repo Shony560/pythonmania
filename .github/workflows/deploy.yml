@@ -29,7 +29,24 @@ jobs:
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
             nohup ./venv/bin/python app.py > app.log 2>&1 &
             
-            # Health check with retry
+            # Health check with retry and error analysis
+            analyze_error() {
+              echo "--- ANALYZING ERROR LOGS ---"
+              if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" app.log; then
+                echo "❌ Error Type: Database Connection Failure (Check RDS/Secrets)"
+              elif grep -i "Kafka error\|Connection to node.*could not be established" app.log; then
+                echo "❌ Error Type: Kafka Connection Failure"
+              elif grep -i "Address already in use" app.log; then
+                echo "❌ Error Type: Port 4567 already in use"
+              elif grep -i "IndentationError\|SyntaxError\|ImportError" app.log; then
+                echo "❌ Error Type: Code/Syntax Error"
+              else
+                echo "❌ Error Type: Unknown (Review logs below)"
+              fi
+              echo "----------------------------"
+              tail -n 30 app.log
+            }
+
             check_health() {
               echo "Waiting 12 seconds for app to start..."
               sleep 12
@@ -45,8 +62,7 @@ jobs:
               if check_health; then
                 echo "✅ Deployment Successful after retry!"
               else
-                echo "❌ Deployment Failed! App is not responding after retry."
-                tail -n 20 app.log
+                analyze_error
                 exit 1
               fi
             fi
