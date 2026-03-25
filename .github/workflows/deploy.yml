@@ -29,7 +29,7 @@ jobs:
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
             
             echo "--- PRE-FLIGHT CHECK ---"
-            ./venv/bin/python -c "import flask, psycopg2, kafka; print('Dependencies OK')" || (echo "❌ Dependency Check Failed"; exit 1)
+            ./venv/bin/python -c "import flask, psycopg2; print('Dependencies OK')" || (echo "❌ Dependency Check Failed"; exit 1)
             ./venv/bin/python -c "import psycopg2, os; psycopg2.connect(os.environ['DATABASE_URL']).close(); print('DB Connection OK')" || (echo "❌ DB Connectivity Check Failed"; exit 1)
             
             touch error.log && > error.log
@@ -45,8 +45,7 @@ jobs:
               echo "Checking for obvious error patterns in $TARGET_LOG..."
               if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" "$TARGET_LOG"; then
                 echo "❌ Error Type: Database Connection Failure (Check RDS/Secrets)"
-              elif grep -i "Kafka error\|Connection to node.*could not be established" "$TARGET_LOG"; then
-                echo "❌ Error Type: Kafka Connection Failure"
+              # Kafka error analysis removed
               elif grep -i "Address already in use" "$TARGET_LOG"; then
                 echo "❌ Error Type: Port 4567 already in use"
               elif grep -i "IndentationError\|SyntaxError\|ImportError\|ModuleNotFoundError" "$TARGET_LOG"; then

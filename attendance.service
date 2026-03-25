@@ -1,0 +1,20 @@
+[Unit]
+Description=Flask Attendance Application
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/pythonmania
+# Set environment variables from GitHub Secrets (populated during deployment)
+Environment="DATABASE_URL={{DATABASE_URL}}"
+Environment="APP_SECRET_KEY={{APP_SECRET_KEY}}"
+Environment="PATH=/home/ubuntu/pythonmania/venv/bin"
+ExecStart=/home/ubuntu/pythonmania/venv/bin/python app.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/ubuntu/pythonmania/app.log
+StandardError=append:/home/ubuntu/pythonmania/error.log
+
+[Install]
+WantedBy=multi-user.target
