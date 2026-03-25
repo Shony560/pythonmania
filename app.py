@@ -8,15 +8,29 @@ import json
 from psycopg2 import errors # Import psycopg2 errors for specific exception handling
 import logging
 from logging.handlers import RotatingFileHandler
+import sys
+import traceback
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('attendance_app')
-handler = RotatingFileHandler('error.log', maxBytes=1000000, backupCount=3)
-handler.setLevel(logging.ERROR)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Top-level error catching to ensure something is logged even if startup fails
+try:
+    # Configure logging immediately
+    logging.basicConfig(level=logging.DEBUG) # Set to DEBUG for maximum info
+    logger = logging.getLogger('attendance_app')
+    # Force log to stdout as well so app.log captures it
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+    
+    handler = RotatingFileHandler('error.log', maxBytes=1000000, backupCount=3)
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    
+    logger.info("Python script started, logging initialized.")
+except Exception as e:
+    print(f"CRITICAL: Failed to initialize logging: {e}")
+    sys.exit(1)
 
 app = Flask(__name__)
 

@@ -27,6 +27,11 @@ jobs:
             fuser -k 4567/tcp || true
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
+            
+            echo "--- PRE-FLIGHT CHECK ---"
+            ./venv/bin/python -c "import flask, psycopg2, kafka; print('Dependencies OK')" || (echo "❌ Dependency Check Failed"; exit 1)
+            ./venv/bin/python -c "import psycopg2, os; psycopg2.connect(os.environ['DATABASE_URL']).close(); print('DB Connection OK')" || (echo "❌ DB Connectivity Check Failed"; exit 1)
+            
             touch error.log && > error.log
             nohup ./venv/bin/python app.py > app.log 2>&1 &
             
@@ -37,6 +42,7 @@ jobs:
               TARGET_LOG="error.log"
               if [ ! -s "$TARGET_LOG" ]; then TARGET_LOG="app.log"; fi
 
+              echo "Checking for obvious error patterns in $TARGET_LOG..."
               if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" "$TARGET_LOG"; then
                 echo "❌ Error Type: Database Connection Failure (Check RDS/Secrets)"
               elif grep -i "Kafka error\|Connection to node.*could not be established" "$TARGET_LOG"; then
@@ -45,21 +51,21 @@ jobs:
                 echo "❌ Error Type: Port 4567 already in use"
               elif grep -i "IndentationError\|SyntaxError\|ImportError\|ModuleNotFoundError" "$TARGET_LOG"; then
                 echo "❌ Error Type: Code/Dependency Error"
-              elif grep -i "Traceback" "$TARGET_LOG"; then
-                echo "❌ Error Type: Python Exception (Review Traceback below)"
+              elif grep -i "Traceback\|Exception\|Error" "$TARGET_LOG"; then
+                echo "❌ Error Type: Python Exception (Review logs below)"
               else
-                echo "❌ Error Type: Unknown (Review logs below)"
+                echo "❌ Error Type: Still Unknown - Printing full logs"
               fi
               echo "----------------------------"
               echo "Environment Variables:"
-              env | grep -E 'DATABASE_URL|APP_SECRET_KEY|HOSTNAME|USER'
-              echo "Content of $TARGET_LOG (Last 50 lines):"
-              tail -n 50 "$TARGET_LOG"
+              env | grep -E 'HOSTNAME|USER' # Don't print secrets for security
+              echo "Content of $TARGET_LOG (Last 100 lines):"
+              tail -n 100 "$TARGET_LOG"
             }
 
             check_health() {
-              echo "Waiting 12 seconds for app to start..."
-              sleep 12
+              echo "Waiting 15 seconds for app to start..."
+              sleep 15
               curl -s -f http://localhost:4567/ > /dev/null
             }
 
