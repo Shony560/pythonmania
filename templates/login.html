@@ -21,6 +21,26 @@
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
         }
         
+        .antigravity-orb {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 700px;
+            height: 700px;
+            background: url('/static/images/antigravity_orb.png') no-repeat center center;
+            background-size: contain;
+            opacity: 0.12;
+            z-index: -1;
+            filter: blur(5px);
+            animation: orb-flow 15s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes orb-flow {
+            0%, 100% { transform: translate(-50%, -55%) scale(1) rotate(0deg); opacity: 0.08; }
+            50% { transform: translate(-50%, -45%) scale(1.1) rotate(5deg); opacity: 0.15; }
+        }
+
         /* Italian Style & Version Corner */
         @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
         
@@ -58,6 +78,8 @@
     </style>
 </head>
 <body>
+    <div class="antigravity-orb"></div>
+    
     <div class="version-corner">
         (v2kafka2026)
     </div>

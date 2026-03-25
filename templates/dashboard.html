@@ -35,6 +35,26 @@
         .table th { font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
         .table-responsive { border-radius: 12px; }
         
+        .antigravity-orb {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            background: url('/static/images/antigravity_orb.png') no-repeat center center;
+            background-size: contain;
+            opacity: 0.1;
+            z-index: -1;
+            filter: blur(8px);
+            animation: orb-flow 20s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes orb-flow {
+            0%, 100% { transform: translate(-50%, -52%) scale(1) rotate(0deg); opacity: 0.05; }
+            50% { transform: translate(-50%, -48%) scale(1.05) rotate(3deg); opacity: 0.12; }
+        }
+        
         /* Italian Style & Version Corner */
         @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
         
@@ -68,6 +88,8 @@
     </style>
 </head>
 <body>
+    <div class="antigravity-orb"></div>
+    
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-clock-history me-2"></i>Attendance</a>
