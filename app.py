@@ -2,10 +2,22 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import os
 from datetime import datetime
+from kafka import KafkaProducer
+import json
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_attendance_key_123'
 DATABASE = 'attendance.db'
+
+# Initialize Kafka Producer
+try:
+    producer = KafkaProducer(
+        bootstrap_servers=['localhost:9092'],
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+except Exception as e:
+    print(f"Warning: Could not connect to Kafka: {e}")
+    producer = None
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -57,6 +69,16 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
+            
+            # Send Kafka Event
+            if producer:
+                try:
+                    event = {"username": user['username'], "action": "login", "status": "success"}
+                    producer.send('user-events', event)
+                    producer.flush()
+                except Exception as e:
+                    print(f"Kafka error: {e}")
+                    
             return redirect(url_for('dashboard'))
         else:
             flash("Invalid credentials, please try again.")
@@ -88,6 +110,16 @@ def register():
             user = cursor.fetchone()
             session['user_id'] = user['id']
             session['username'] = username
+            
+            # Send Kafka Event
+            if producer:
+                try:
+                    event = {"username": username, "action": "register", "status": "success"}
+                    producer.send('user-events', event)
+                    producer.flush()
+                except Exception as e:
+                    print(f"Kafka error: {e}")
+                    
             flash("Welcome! Your account has been created.")
             return redirect(url_for('dashboard'))
         except sqlite3.IntegrityError:
