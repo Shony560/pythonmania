@@ -34,6 +34,37 @@
         .card:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
         .table th { font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
         .table-responsive { border-radius: 12px; }
+        
+        /* Italian Style & Version Corner */
+        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+        
+        .version-corner {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(45, 52, 54, 0.8);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .italian-name {
+            font-family: 'Great Vibes', cursive;
+            font-size: 1.8rem;
+            margin-right: 15px;
+            background: linear-gradient(90deg, #008C45 0%, #F4F5F0 50%, #CD212A 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -41,11 +72,16 @@
         <div class="container">
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-clock-history me-2"></i>Attendance</a>
             <div class="ms-auto d-flex align-items-center">
-                <span class="navbar-text me-4 text-white fw-medium">Welcome, {{ username }}! <small class="text-light-50 opacity-75">(v2kafka2026)</small></span>
+                <span class="italian-name">Shony</span>
+                <span class="navbar-text me-4 text-white fw-medium">Welcome, {{ username }}!</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</a>
             </div>
         </div>
     </nav>
+    
+    <div class="version-corner">
+        <i class="bi bi-info-circle me-1"></i> (v2kafka2026)
+    </div>
     
     <div class="container">
         {% with messages = get_flashed_messages() %}
