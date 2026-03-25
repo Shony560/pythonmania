@@ -3,8 +3,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
-from kafka import KafkaProducer
-import json
+# from kafka import KafkaProducer (REMOVED)
+# import json (REMOVED)
 from psycopg2 import errors # Import psycopg2 errors for specific exception handling
 import logging
 from logging.handlers import RotatingFileHandler
@@ -40,15 +40,8 @@ def log_request():
 app.secret_key = os.environ.get('APP_SECRET_KEY', 'super_secret_attendance_key_123')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Initialize Kafka Producer
-try:
-    producer = KafkaProducer(
-        bootstrap_servers=['localhost:9092'],
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
-    )
-except Exception as e:
-    logger.error(f"Could not connect to Kafka: {e}")
-    producer = None
+# Initialize Kafka Producer (REMOVED)
+producer = None
 
 def get_db():
     logger.debug("Attempting to connect to database using DATABASE_URL")
@@ -118,15 +111,7 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             
-            # Send Kafka Event
-            if producer:
-                try:
-                    event = {"username": user['username'], "action": "login", "status": "success"}
-                    producer.send('user-events', event)
-                    producer.flush()
-                    logger.info("Kafka login event sent successfully")
-                except Exception as e:
-                    logger.exception("Kafka error during login event")
+            # Kafka Event Sending REMOVED
                     
             return redirect(url_for('dashboard'))
         else:
@@ -163,15 +148,7 @@ def register():
             session['user_id'] = user['id']
             session['username'] = username
             
-            # Send Kafka Event
-            if producer:
-                try:
-                    event = {"username": username, "action": "register", "status": "success"}
-                    producer.send('user-events', event)
-                    producer.flush()
-                    logger.info("Kafka registration event sent successfully")
-                except Exception as e:
-                    logger.exception("Kafka error during registration event")
+            # Kafka Event Sending REMOVED
                     
             flash("Welcome! Your account has been created.")
             return redirect(url_for('dashboard'))
@@ -215,21 +192,7 @@ def mark_attendance():
     conn.commit()
     conn.close()
     
-    # Send Kafka Event
-    if producer:
-        try:
-            event = {
-                "username": session['username'],
-                "action": "check_in" if status == "Check In" else "check_out",
-                "status": status,
-                "date": date_str,
-                "time": time_str
-            }
-            producer.send('user-events', event)
-            producer.flush()
-            logger.info("Kafka attendance event sent successfully")
-        except Exception as e:
-            logger.exception("Kafka error during attendance event")
+    # Kafka Event Sending REMOVED
             
     flash(f"Successfully marked '{status}' at {time_str}")
     return redirect(url_for('dashboard'))
