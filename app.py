@@ -3,8 +3,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
-# from kafka import KafkaProducer (REMOVED)
-# import json (REMOVED)
+
 from psycopg2 import errors # Import psycopg2 errors for specific exception handling
 import logging
 from logging.handlers import RotatingFileHandler
@@ -40,8 +39,7 @@ def log_request():
 app.secret_key = os.environ.get('APP_SECRET_KEY', 'super_secret_attendance_key_123')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Initialize Kafka Producer (REMOVED)
-producer = None
+
 
 def get_db():
     logger.debug("Attempting to connect to database using DATABASE_URL")
@@ -111,7 +109,7 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             
-            # Kafka Event Sending REMOVED
+
                     
             return redirect(url_for('dashboard'))
         else:

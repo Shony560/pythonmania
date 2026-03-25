@@ -32,52 +32,29 @@ jobs:
             ./venv/bin/python -c "import flask, psycopg2; print('Dependencies OK')" || (echo "❌ Dependency Check Failed"; exit 1)
             ./venv/bin/python -c "import psycopg2, os; psycopg2.connect(os.environ['DATABASE_URL']).close(); print('DB Connection OK')" || (echo "❌ DB Connectivity Check Failed"; exit 1)
             
-            touch error.log && > error.log
-            nohup ./venv/bin/python app.py > app.log 2>&1 &
-            
-            # Health check with retry and error analysis using dedicated error.log
-            analyze_error() {
-              echo "--- ANALYZING ERROR LOGS ---"
-              # Check error.log first, then fall back to app.log if empty
-              TARGET_LOG="error.log"
-              if [ ! -s "$TARGET_LOG" ]; then TARGET_LOG="app.log"; fi
+            # Service Configuration (Persistent Auto-restart)
+            # Replace placeholders in the service file
+            sed -i "s|{{DATABASE_URL}}|${{ secrets.DATABASE_URL }}|g" attendance.service
+            sed -i "s|{{APP_SECRET_KEY}}|${{ secrets.APP_SECRET_KEY }}|g" attendance.service
 
-              echo "Checking for obvious error patterns in $TARGET_LOG..."
-              if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" "$TARGET_LOG"; then
-                echo "❌ Error Type: Database Connection Failure (Check RDS/Secrets)"
-              # Kafka error analysis removed
-              elif grep -i "Address already in use" "$TARGET_LOG"; then
-                echo "❌ Error Type: Port 4567 already in use"
-              elif grep -i "IndentationError\|SyntaxError\|ImportError\|ModuleNotFoundError" "$TARGET_LOG"; then
-                echo "❌ Error Type: Code/Dependency Error"
-              elif grep -i "Traceback\|Exception\|Error" "$TARGET_LOG"; then
-                echo "❌ Error Type: Python Exception (Review logs below)"
-              else
-                echo "❌ Error Type: Still Unknown - Printing full logs"
-              fi
-              echo "----------------------------"
-              echo "Environment Variables:"
-              env | grep -E 'HOSTNAME|USER' # Don't print secrets for security
-              echo "Content of $TARGET_LOG (Last 100 lines):"
-              tail -n 100 "$TARGET_LOG"
-            }
+            # Install and reload systemd service
+            sudo cp attendance.service /etc/systemd/system/attendance.service
+            sudo systemctl daemon-reload
+            sudo systemctl enable attendance
+            sudo systemctl restart attendance
 
+            # Health check
             check_health() {
-              echo "Waiting 15 seconds for app to start..."
-              sleep 15
+              echo "Waiting 10 seconds for service to stabilize..."
+              sleep 10
               curl -s -f http://localhost:4567/ > /dev/null
             }
 
             if check_health; then
-              echo "✅ Deployment Successful! App is running."
+              echo "✅ Deployment Successful! Service is active and persistent."
             else
-              echo "⚠️ First check failed. Retrying one more time..."
-              fuser -k 4567/tcp || true
-              nohup ./venv/bin/python app.py > app.log 2>&1 &
-              if check_health; then
-                echo "✅ Deployment Successful after retry!"
-              else
-                analyze_error
-                exit 1
-              fi
+              echo "❌ Health Check Failed. Inspecting logs..."
+              sudo systemctl status attendance --no-pager
+              tail -n 100 error.log
+              exit 1
             fi
