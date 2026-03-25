@@ -27,16 +27,26 @@ jobs:
             fuser -k 4567/tcp || true
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
-            nohup ./venv/bin/python app.py > app.log 2>&1 &
+            nohup DATABASE_URL="${{ secrets.DATABASE_URL }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" ./venv/bin/python app.py > app.log 2>&1 &
             
-            # Health check
-            echo "Waiting for app to start..."
-            sleep 8
-            if curl -s -f http://localhost:4567/ > /dev/null; then
+            # Health check with retry
+            check_health() {
+              echo "Waiting 12 seconds for app to start..."
+              sleep 12
+              curl -s -f http://localhost:4567/ > /dev/null
+            }
+
+            if check_health; then
               echo "✅ Deployment Successful! App is running."
             else
-              echo "❌ Deployment Failed! App is not responding."
-              echo "Last 20 lines of app.log:"
-              tail -n 20 app.log
-              exit 1
+              echo "⚠️ First check failed. Retrying one more time..."
+              fuser -k 4567/tcp || true
+              nohup DATABASE_URL="${{ secrets.DATABASE_URL }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" ./venv/bin/python app.py > app.log 2>&1 &
+              if check_health; then
+                echo "✅ Deployment Successful after retry!"
+              else
+                echo "❌ Deployment Failed! App is not responding after retry."
+                tail -n 20 app.log
+                exit 1
+              fi
             fi
