@@ -27,24 +27,30 @@ jobs:
             fuser -k 4567/tcp || true
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
+            touch error.log && > error.log
             nohup ./venv/bin/python app.py > app.log 2>&1 &
             
-            # Health check with retry and error analysis
+            # Health check with retry and error analysis using dedicated error.log
             analyze_error() {
               echo "--- ANALYZING ERROR LOGS ---"
-              if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" app.log; then
+              # Check error.log first, then fall back to app.log if empty
+              TARGET_LOG="error.log"
+              if [ ! -s "$TARGET_LOG" ]; then TARGET_LOG="app.log"; fi
+
+              if grep -i "psycopg2.OperationalError\|Connection refused\|authentication failed" "$TARGET_LOG"; then
                 echo "❌ Error Type: Database Connection Failure (Check RDS/Secrets)"
-              elif grep -i "Kafka error\|Connection to node.*could not be established" app.log; then
+              elif grep -i "Kafka error\|Connection to node.*could not be established" "$TARGET_LOG"; then
                 echo "❌ Error Type: Kafka Connection Failure"
-              elif grep -i "Address already in use" app.log; then
+              elif grep -i "Address already in use" "$TARGET_LOG"; then
                 echo "❌ Error Type: Port 4567 already in use"
-              elif grep -i "IndentationError\|SyntaxError\|ImportError" app.log; then
+              elif grep -i "IndentationError\|SyntaxError\|ImportError" "$TARGET_LOG"; then
                 echo "❌ Error Type: Code/Syntax Error"
               else
                 echo "❌ Error Type: Unknown (Review logs below)"
               fi
               echo "----------------------------"
-              tail -n 30 app.log
+              echo "Content of $TARGET_LOG:"
+              tail -n 30 "$TARGET_LOG"
             }
 
             check_health() {

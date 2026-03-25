@@ -6,6 +6,17 @@ from datetime import datetime
 from kafka import KafkaProducer
 import json
 from psycopg2 import errors # Import psycopg2 errors for specific exception handling
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('attendance_app')
+handler = RotatingFileHandler('error.log', maxBytes=1000000, backupCount=3)
+handler.setLevel(logging.ERROR)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('APP_SECRET_KEY', 'super_secret_attendance_key_123')
@@ -18,7 +29,7 @@ try:
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 except Exception as e:
-    print(f"Warning: Could not connect to Kafka: {e}")
+    logger.error(f"Could not connect to Kafka: {e}")
     producer = None
 
 def get_db():
@@ -28,35 +39,39 @@ def get_db():
     return conn
 
 def init_db():
-    # In Postgres, we usually create tables if they don't exist
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS attendance (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            date TEXT,
-            time TEXT,
-            status TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    
-    # Check if users exist before inserting defaults
-    cursor.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()['count'] == 0:
-        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user1', 'pass1'))
-        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user2', 'pass2'))
-    
-    conn.commit()
-    conn.close()
+    try:
+        # In Postgres, we usually create tables if they don't exist
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS attendance (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                date TEXT,
+                time TEXT,
+                status TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        ''')
+        
+        # Check if users exist before inserting defaults
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()['count'] == 0:
+            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user1', 'pass1'))
+            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user2', 'pass2'))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+        raise e
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
