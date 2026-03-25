@@ -1,13 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
 from kafka import KafkaProducer
 import json
+from psycopg2 import errors # Import psycopg2 errors for specific exception handling
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_attendance_key_123'
-DATABASE = 'attendance.db'
+app.secret_key = os.environ.get('APP_SECRET_KEY', 'super_secret_attendance_key_123')
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # Initialize Kafka Producer
 try:
@@ -20,36 +22,41 @@ except Exception as e:
     producer = None
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set")
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
 def init_db():
-    if not os.path.exists(DATABASE):
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE attendance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                date TEXT,
-                time TEXT,
-                status TEXT,
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-        ''')
-        # Insert exactly 2 users
-        cursor.execute("INSERT INTO users (username, password) VALUES ('user1', 'pass1')")
-        cursor.execute("INSERT INTO users (username, password) VALUES ('user2', 'pass2')")
-        conn.commit()
-        conn.close()
+    # In Postgres, we usually create tables if they don't exist
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS attendance (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            date TEXT,
+            time TEXT,
+            status TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Check if users exist before inserting defaults
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()['count'] == 0:
+        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user1', 'pass1'))
+        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user2', 'pass2'))
+    
+    conn.commit()
+    conn.close()
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -62,7 +69,7 @@ def login():
         
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
         user = cursor.fetchone()
         conn.close()
         
@@ -102,11 +109,11 @@ def register():
         conn = get_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
             conn.commit()
             
             # Auto-login after registration
-            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
             user = cursor.fetchone()
             session['user_id'] = user['id']
             session['username'] = username
@@ -122,7 +129,7 @@ def register():
                     
             flash("Welcome! Your account has been created.")
             return redirect(url_for('dashboard'))
-        except sqlite3.IntegrityError:
+        except errors.UniqueViolation:
             flash("Username already exists. Please choose another.")
         finally:
             conn.close()
@@ -136,7 +143,7 @@ def dashboard():
     
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM attendance WHERE user_id = ? ORDER BY date DESC, time DESC", (session['user_id'],))
+    cursor.execute("SELECT * FROM attendance WHERE user_id = %s ORDER BY date DESC, time DESC", (session['user_id'],))
     records = cursor.fetchall()
     conn.close()
     
@@ -154,7 +161,7 @@ def mark_attendance():
     
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO attendance (user_id, date, time, status) VALUES (?, ?, ?, ?)", 
+    cursor.execute("INSERT INTO attendance (user_id, date, time, status) VALUES (%s, %s, %s, %s)", 
                    (session['user_id'], date_str, time_str, status))
     conn.commit()
     conn.close()
@@ -191,7 +198,7 @@ def api_get_attendance():
     
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT date, time, status FROM attendance WHERE user_id = ? ORDER BY date DESC, time DESC", (user_id,))
+    cursor.execute("SELECT date, time, status FROM attendance WHERE user_id = %s ORDER BY date DESC, time DESC", (user_id,))
     records = [dict(row) for row in cursor.fetchall()]
     conn.close()
     
@@ -213,7 +220,7 @@ def api_post_attendance():
     
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO attendance (user_id, date, time, status) VALUES (?, ?, ?, ?)", 
+    cursor.execute("INSERT INTO attendance (user_id, date, time, status) VALUES (%s, %s, %s, %s)", 
                    (user_id, date_str, time_str, status))
     conn.commit()
     conn.close()

@@ -12,9 +12,8 @@ A Flask-based **attendance/check-in app** with Kafka event streaming.
 | Component | Details |
 |-----------|---------|
 | **Backend** | Flask (Python), port `4567` |
-| **Database** | SQLite — `attendance.db` |
+| **Database** | Amazon RDS (**PostgreSQL**) |
 | **Messaging** | Kafka on `localhost:9092`, topic: `user-events` |
-| **Kafka Image** | `apache/kafka:3.7.0` (switched from broken `bitnami/kafka:latest`) |
 | **Key files** | `app.py`, `consumer.py`, `requirements.txt`, `docker-compose.yml` |
 
 ---
@@ -45,7 +44,7 @@ To watch Kafka events in a second terminal:
 | **IP** | `43.205.239.247` |
 | **SSH Key** | `C:\Users\sho\Downloads\newset.ppk` (PuTTY format) |
 | **User** | `ubuntu` |
-| **App path** | `/home/ubuntu/pythonmania/` |
+| **Database** | Amazon RDS (PostgreSQL) |
 | **App log** | `/home/ubuntu/pythonmania/app.log` |
 
 ### Connect via SSH:
