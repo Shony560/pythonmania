@@ -27,7 +27,7 @@ jobs:
             fuser -k 4567/tcp || true
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
-            nohup DATABASE_URL="${{ secrets.DATABASE_URL }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" ./venv/bin/python app.py > app.log 2>&1 &
+            nohup ./venv/bin/python app.py > app.log 2>&1 &
             
             # Health check with retry
             check_health() {
@@ -41,7 +41,7 @@ jobs:
             else
               echo "⚠️ First check failed. Retrying one more time..."
               fuser -k 4567/tcp || true
-              nohup DATABASE_URL="${{ secrets.DATABASE_URL }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" ./venv/bin/python app.py > app.log 2>&1 &
+              nohup ./venv/bin/python app.py > app.log 2>&1 &
               if check_health; then
                 echo "✅ Deployment Successful after retry!"
               else
