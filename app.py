@@ -108,9 +108,7 @@ def login():
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
-            
-
-                    
+            # Registration logic removed remnants
             return redirect(url_for('dashboard'))
         else:
             flash("Invalid credentials, please try again.")
@@ -190,7 +188,7 @@ def mark_attendance():
     conn.commit()
     conn.close()
     
-    # Kafka Event Sending REMOVED
+    # Attendance record logic complete
             
     flash(f"Successfully marked '{status}' at {time_str}")
     return redirect(url_for('dashboard'))
