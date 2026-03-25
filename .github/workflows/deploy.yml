@@ -23,5 +23,5 @@ jobs:
           script: |
             cd /home/ubuntu/pythonmania
             git pull origin main
-            # Restart Flask App
+            pkill -f 'app.py' || true
             nohup ./venv/bin/python app.py > app.log 2>&1 &
