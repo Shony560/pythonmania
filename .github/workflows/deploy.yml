@@ -26,5 +26,5 @@ jobs:
             # Restart Flask App
             pkill -f 'python app.py' || true
             nohup ./venv/bin/python app.py > app.log 2>&1 &
-            sleep 2
-            ps aux | grep app.py
+            sleep 3
+            pgrep -f 'python app.py' || echo "App might not have started, check app.log"

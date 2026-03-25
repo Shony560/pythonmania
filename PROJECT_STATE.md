@@ -24,11 +24,12 @@ A Flask-based **attendance/check-in app** with Kafka event streaming.
 > Docker Desktop must be running first (green status in system tray)
 
 ```powershell
-cd c:\Users\sho\.gemini\antigravity\scratch\pythonmania
-.\start.ps1
+# Usage: Start the app manually
+docker compose up -d          # start Kafka
+venv\Scripts\python.exe app.py # start Flask
 ```
 
-`start.ps1` does: `docker compose up -d` → creates venv → installs requirements → starts Flask.
+Kafka creates venv → installs requirements → starts Flask.
 
 To watch Kafka events in a second terminal:
 ```powershell
@@ -58,6 +59,9 @@ echo y | & "C:\Program Files\PuTTY\plink.exe" -i "C:\Users\sho\Downloads\newset.
   app.py consumer.py requirements.txt docker-compose.yml static templates `
   ubuntu@43.205.239.247:/home/ubuntu/pythonmania/
 ```
+
+### Automatic Deployment (Recommended):
+Push to `main` branch. GitHub Actions handles the rest.
 
 ### Start services on EC2:
 ```bash
