@@ -25,4 +25,6 @@ jobs:
             git pull origin main
             ./venv/bin/pip install -r requirements.txt
             fuser -k 4567/tcp || true
-            nohup DATABASE_URL="${{ secrets.DATABASE_URL }}" APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}" ./venv/bin/python app.py > app.log 2>&1 &
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export APP_SECRET_KEY="${{ secrets.APP_SECRET_KEY }}"
+            nohup ./venv/bin/python app.py > app.log 2>&1 &
