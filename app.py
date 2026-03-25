@@ -19,6 +19,10 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 app = Flask(__name__)
+
+@app.before_request
+def log_request():
+    logger.debug(f"Request: {request.method} {request.path}")
 app.secret_key = os.environ.get('APP_SECRET_KEY', 'super_secret_attendance_key_123')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -33,14 +37,21 @@ except Exception as e:
     producer = None
 
 def get_db():
+    logger.debug("Attempting to connect to database using DATABASE_URL")
     if not DATABASE_URL:
+        logger.error("DATABASE_URL environment variable is not set")
         raise ValueError("DATABASE_URL environment variable is not set")
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    try:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        logger.info("Database connection established")
+        return conn
+    except Exception as e:
+        logger.exception("Failed to connect to database")
+        raise e
 
 def init_db():
+    logger.info("Initializing database schema")
     try:
-        # In Postgres, we usually create tables if they don't exist
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
@@ -60,27 +71,28 @@ def init_db():
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
         ''')
-        
-        # Check if users exist before inserting defaults
         cursor.execute("SELECT COUNT(*) FROM users")
         if cursor.fetchone()['count'] == 0:
             cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user1', 'pass1'))
             cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('user2', 'pass2'))
-        
         conn.commit()
+        logger.info("Database initialized successfully")
         conn.close()
     except Exception as e:
-        logger.error(f"Error initializing database: {e}")
+        logger.exception("Error initializing database")
         raise e
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    logger.debug("Login endpoint accessed")
     if 'user_id' in session:
+        logger.debug("User already logged in, redirecting to dashboard")
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        logger.info(f"Login attempt for username: {username}")
         
         conn = get_db()
         cursor = conn.cursor()
@@ -98,8 +110,9 @@ def login():
                     event = {"username": user['username'], "action": "login", "status": "success"}
                     producer.send('user-events', event)
                     producer.flush()
+                    logger.info("Kafka login event sent successfully")
                 except Exception as e:
-                    print(f"Kafka error: {e}")
+                    logger.exception("Kafka error during login event")
                     
             return redirect(url_for('dashboard'))
         else:
@@ -109,13 +122,16 @@ def login():
     
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    logger.debug("Register endpoint accessed")
     if 'user_id' in session:
+        logger.debug("User already logged in, redirecting to dashboard")
         return redirect(url_for('dashboard'))
         
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
+        logger.info(f"Registration attempt for username: {username}")
         
         if password != confirm_password:
             flash("Passwords do not match!")
@@ -139,8 +155,9 @@ def register():
                     event = {"username": username, "action": "register", "status": "success"}
                     producer.send('user-events', event)
                     producer.flush()
+                    logger.info("Kafka registration event sent successfully")
                 except Exception as e:
-                    print(f"Kafka error: {e}")
+                    logger.exception("Kafka error during registration event")
                     
             flash("Welcome! Your account has been created.")
             return redirect(url_for('dashboard'))
@@ -166,13 +183,16 @@ def dashboard():
 
 @app.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
+    logger.debug("Mark attendance endpoint accessed")
     if 'user_id' not in session:
+        logger.warning("Unauthenticated attempt to mark attendance")
         return redirect(url_for('login'))
     
     status = request.form.get('status', 'Present')
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M:%S")
+    logger.info(f"User {session.get('username')} marking attendance: {status} at {date_str} {time_str}")
     
     conn = get_db()
     cursor = conn.cursor()
@@ -193,8 +213,9 @@ def mark_attendance():
             }
             producer.send('user-events', event)
             producer.flush()
+            logger.info("Kafka attendance event sent successfully")
         except Exception as e:
-            print(f"Kafka error: {e}")
+            logger.exception("Kafka error during attendance event")
             
     flash(f"Successfully marked '{status}' at {time_str}")
     return redirect(url_for('dashboard'))
@@ -207,8 +228,10 @@ def logout():
 # API Endpoints
 @app.route('/api/attendance', methods=['GET'])
 def api_get_attendance():
+    logger.debug("API GET attendance called")
     user_id = session.get('user_id')
     if not user_id:
+        logger.warning("Unauthorized API GET attendance request")
         return jsonify({"error": "Unauthorized"}), 401
     
     conn = get_db()
@@ -221,8 +244,10 @@ def api_get_attendance():
 
 @app.route('/api/attendance', methods=['POST'])
 def api_post_attendance():
+    logger.debug("API POST attendance called")
     user_id = session.get('user_id')
     if not user_id:
+        logger.warning("Unauthorized API POST attendance request")
         # For external API use without session, you'd normally use a token. 
         # But keeping it simple for now as per session-based app.
         return jsonify({"error": "Unauthorized"}), 401
@@ -241,6 +266,11 @@ def api_post_attendance():
     conn.close()
     
     return jsonify({"message": "Attendance recorded", "status": status, "time": time_str}), 201
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.exception("Unhandled exception")
+    return jsonify(error=str(e)), 500
 
 if __name__ == '__main__':
     try:

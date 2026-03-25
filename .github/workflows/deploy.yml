@@ -51,6 +51,8 @@ jobs:
                 echo "❌ Error Type: Unknown (Review logs below)"
               fi
               echo "----------------------------"
+              echo "Environment Variables:"
+              env | grep -E 'DATABASE_URL|APP_SECRET_KEY|HOSTNAME|USER'
               echo "Content of $TARGET_LOG (Last 50 lines):"
               tail -n 50 "$TARGET_LOG"
             }
